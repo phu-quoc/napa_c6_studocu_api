@@ -1,0 +1,15 @@
+export default () => ({
+  nodeENV: process.env.NODE_ENV?.toLowerCase() ?? 'production',
+  appName: process.env.APP_NAME ?? '',
+  port: parseInt(`${process.env.PORT ?? 3003}`, 10),
+  apiPrefix: process.env.API_PREFIX,
+  feUrl: process.env.FE_URL ?? 'http://localhost:3000',
+  jwtAccessSecret: process.env.JWT_ACCESS_SECRET,
+  jwtRefreshSecret: process.env.JWT_REFRESH_SECRET,
+  mailHost: process.env.MAIL_HOST,
+  mailPort: parseInt(process.env.MAIL_PORT ?? '465', 10),
+  mailUser: process.env.MAIL_USER,
+  mailPassword: process.env.MAIL_PASSWORD,
+  defaultMailFrom: process.env.DEFAULT_MAIL_FROM,
+  jwtVerificationSecret: process.env.JWT_VERIFICATION_SECRET,
+});
