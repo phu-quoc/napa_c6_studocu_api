@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { CreateUserDto } from '@/modules/users/dto';
@@ -7,6 +15,7 @@ import { UserPayload } from '@/bases/types';
 import { Auth, User } from '@/bases/decorators';
 import { RefreshTokenGuard } from '@/bases/guards/refresh-token.guard';
 import { VerifyTokenGuard } from '@guards/verify-token.guard';
+import { FilterDocumentDto } from '@/modules/documents/dto';
 
 @ApiBearerAuth()
 @ApiTags('auth')
@@ -28,6 +37,20 @@ export class AuthController {
   @Get('me')
   getMe(@User() user: UserPayload) {
     return this.authService.getMe(user.id);
+  }
+
+  @ApiBearerAuth()
+  @Auth()
+  @Get('documents')
+  getDocuments(@User() user: UserPayload, @Query() dto: FilterDocumentDto) {
+    return this.authService.getDocuments(user.id, dto);
+  }
+
+  @ApiBearerAuth()
+  @Auth()
+  @Get('statistics')
+  getStatistics(@User() user: UserPayload) {
+    return this.authService.getStatistics(user.id);
   }
 
   @Auth()

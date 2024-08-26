@@ -53,7 +53,9 @@ export class Document extends BaseEntity {
   @JoinColumn({ name: 'course_id' })
   course: Course;
 
-  @ManyToMany(() => User, (users) => users.likedDocuments)
+  @ManyToMany(() => User, (users) => users.likedDocuments, {
+    cascade: true,
+  })
   @JoinTable({
     name: 'likes',
     joinColumn: { name: 'document_id', referencedColumnName: 'id' },

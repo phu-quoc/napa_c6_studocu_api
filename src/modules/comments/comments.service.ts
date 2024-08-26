@@ -28,17 +28,26 @@ export class CommentsService {
     return this.commentRepository.findOneBy({ id });
   }
 
-  async findByDocumentSlug(
-    slug: string,
+  async findByDocumentId(
+    documentId: number,
     filter: FilterDocumentDto,
   ): Promise<Pagination<Comment>> {
     const [data, total] = await this.commentRepository.findAndCount({
+      relations: {
+        user: true,
+      },
       take: filter.limit,
       skip: filter.skip,
+      select: {
+        user: {
+          avatar: true,
+          displayName: true,
+        },
+      },
       order: filter.order,
       where: {
         document: {
-          slug: slug,
+          id: documentId,
         },
       },
     });

@@ -11,7 +11,7 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  premiumExpireAt?: string;
+  premiumExpireAt?: Date;
 
   @ApiPropertyOptional()
   @IsOptional()

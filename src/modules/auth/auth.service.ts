@@ -23,11 +23,14 @@ import { join } from 'path';
 import { VerifiedException } from '@exceptions/verified.exception';
 import { ResetPasswordDto } from '@/modules/auth/dto';
 import { ExpiredException } from '@exceptions/expired.exception';
+import { DocumentsService } from '@/modules/documents/documents.service';
+import { FilterDocumentDto } from '@/modules/documents/dto';
 
 @Injectable()
 export class AuthService {
   constructor(
     private usersService: UsersService,
+    private documentsService: DocumentsService,
     private jwtService: JwtService,
     private mailService: MailService,
     private configService: ConfigService,
@@ -99,7 +102,26 @@ export class AuthService {
       displayName: user.displayName,
       avatar: user.avatar,
       premiumExpireAt: user.premiumExpireAt,
+      university: user.university,
     };
+  }
+
+  async getDocuments(userId: number, dto: FilterDocumentDto) {
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new ResourceNotFoundException(MessageName.USER);
+    }
+
+    return this.documentsService.findByUserId(userId, dto);
+  }
+
+  async getStatistics(userId: number) {
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new ResourceNotFoundException(MessageName.USER);
+    }
+
+    return this.documentsService.getStatistics(userId);
   }
 
   async logout(userId: number) {

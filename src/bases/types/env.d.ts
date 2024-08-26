@@ -7,6 +7,7 @@ declare let process: {
     PORT: number;
     API_PREFIX: string;
     FE_URL: string;
+    PREMIUM_EXPIRE_DURATION: number;
     JWT_ACCESS_SECRET: string;
     JWT_REFRESH_SECRET: string;
     JWT_ACCESS_EXPIRES_IN: string;

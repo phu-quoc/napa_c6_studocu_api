@@ -25,12 +25,12 @@ export class CommentsController {
     return this.commentsService.create(user.id, dto);
   }
 
-  @Get('document/:slug')
-  findByDocumentSlug(
-    @Param('slug') slug: string,
+  @Get('document/:documentId')
+  findByDocumentId(
+    @Param('documentId') documentId: number,
     @Query() dto: FilterCommentDto,
   ) {
-    return this.commentsService.findByDocumentSlug(slug, dto);
+    return this.commentsService.findByDocumentId(documentId, dto);
   }
 
   @ApiBearerAuth()

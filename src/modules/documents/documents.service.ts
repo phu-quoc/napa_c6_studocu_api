@@ -1,7 +1,7 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ILike, Repository } from 'typeorm';
-import { Document } from '@/database/entity';
+import { DataSource, ILike, Repository } from 'typeorm';
+import { Document, User } from '@/database/entity';
 import { ResourceNotFoundException } from '@exceptions/resource-not-found.exception';
 import { MessageName } from '@constants/message';
 import {
@@ -12,6 +12,8 @@ import {
 import { CoursesService } from '@/modules/courses/courses.service';
 import { CategoriesService } from '@/modules/categories/categories.service';
 import { Pagination, RemoveResult } from '@/bases/types';
+import { UsersService } from '@/modules/users/users.service';
+import { upgradePremiumPeriod } from '@/utils/date';
 
 @Injectable()
 export class DocumentsService {
@@ -20,20 +22,38 @@ export class DocumentsService {
     private documentRepository: Repository<Document>,
     private coursesService: CoursesService,
     private categoriesService: CategoriesService,
+    private usersService: UsersService,
+    private dataSource: DataSource,
   ) {}
 
   async create(userId: number, dto: CreateDocumentDto): Promise<Document> {
-    const course = await this.coursesService.findById(dto.courseId);
-    if (!course) throw new ResourceNotFoundException(MessageName.COURSE);
+    const queryRunner = this.dataSource.createQueryRunner();
+    try {
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+      const course = await this.coursesService.findById(dto.courseId);
+      if (!course) throw new ResourceNotFoundException(MessageName.COURSE);
 
-    const category = await this.categoriesService.findById(dto.categoryId);
-    if (!category) throw new ResourceNotFoundException(MessageName.CATEGORY);
+      const category = await this.categoriesService.findById(dto.categoryId);
+      if (!category) throw new ResourceNotFoundException(MessageName.CATEGORY);
 
-    const document = this.documentRepository.create({
-      ...dto,
-      uploadedBy: userId,
-    });
-    return this.documentRepository.save(document);
+      const user = await this.usersService.findById(userId);
+      if (!user) throw new ResourceNotFoundException(MessageName.USER);
+      const premiumExpireAt = upgradePremiumPeriod(user?.premiumExpireAt);
+      const updated = Object.assign(user, { premiumExpireAt });
+      await queryRunner.manager.save(User, updated);
+      const document = queryRunner.manager.create(Document, {
+        ...dto,
+        uploadedBy: userId,
+      });
+      const newDocument = await queryRunner.manager.save(document);
+      await queryRunner.commitTransaction();
+      return newDocument;
+    } catch (e) {
+      await queryRunner.rollbackTransaction();
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async findAll(filter: FilterDocumentDto): Promise<Pagination<Document>> {
@@ -100,24 +120,35 @@ export class DocumentsService {
   }
 
   async findBySlug(slug: string): Promise<Document> {
-    const document = await this.documentRepository.findOne({
-      relations: {
-        uploader: { university: true },
-        course: { university: true },
-      },
-      where: { slug },
-      select: {
-        uploader: { displayName: true, university: { name: true } },
-        course: {
-          slug: true,
-          name: true,
-          university: {
-            slug: true,
-            name: true,
-          },
-        },
-      },
-    });
+    const document = await this.documentRepository
+      .createQueryBuilder('document')
+      .leftJoin('document.users', 'users')
+      .leftJoin('document.uploader', 'uploader')
+      .leftJoin('uploader.university', 'userUniversity')
+      .leftJoin('document.course', 'course')
+      .leftJoin('course.university', 'university')
+      .select([
+        'document.id',
+        'document.title',
+        'document.slug',
+        'document.categoryId',
+        'document.academicYear',
+        'document.description',
+        'document.view',
+        'document.path',
+        'uploader.avatar',
+        'uploader.displayName',
+        'userUniversity.name',
+        'course.id',
+        'course.name',
+        'university.id',
+        'university.name',
+      ])
+      .where({
+        slug,
+      })
+      .loadRelationCountAndMap('document.liked', 'document.users')
+      .getOne();
     if (!document) {
       throw new ResourceNotFoundException(MessageName.DOCUMENT);
     }
@@ -128,6 +159,66 @@ export class DocumentsService {
 
   findById(id: number): Promise<Document> {
     return this.documentRepository.findOneBy({ id });
+  }
+
+  async findByUserId(
+    userId: number,
+    filter: FilterDocumentDto,
+  ): Promise<Pagination<Document>> {
+    const [data, total] = await this.documentRepository
+      .createQueryBuilder('document')
+      .leftJoin('document.uploader', 'uploader')
+      .where({
+        uploader: {
+          id: userId,
+        },
+      })
+      .skip(filter.skip)
+      .take(filter.limit)
+      .loadRelationCountAndMap('document.liked', 'document.users')
+      .getManyAndCount();
+    return {
+      current: filter.page,
+      pageSize: filter.limit,
+      total,
+      data,
+    };
+  }
+
+  async getStatistics(userId: number) {
+    return this.documentRepository
+      .createQueryBuilder('document')
+      .leftJoin('document.users', 'users')
+      .leftJoin('document.comments', 'comments')
+      .where({
+        uploader: {
+          id: userId,
+        },
+      })
+      .select('count(document.id)', 'total')
+      .addSelect('sum(document.view)', 'views')
+      .addSelect('count(users.id)', 'liked')
+      .addSelect('count(comments.comment)', 'comments')
+      .getRawOne();
+  }
+
+  async like(userId: number, slug: string): Promise<Document> {
+    const document = await this.documentRepository.findOne({
+      relations: {
+        users: true,
+      },
+      where: {
+        slug,
+      },
+    });
+    const likedUserIndex = document.users.findIndex((el) => el.id === userId);
+    if (likedUserIndex === -1) {
+      const user = await this.usersService.findById(userId);
+      document.users.push(user);
+    } else {
+      delete document.users[likedUserIndex];
+    }
+    return this.documentRepository.save(document);
   }
 
   async update(

@@ -8,6 +8,10 @@ const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
 const JWT_ACCESS_EXPIRES_IN = process.env.JWT_ACCESS_EXPIRES_IN;
 const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN;
 const FE_URL = process.env.FE_URL ?? 'http://localhost:3000';
+const PREMIUM_EXPIRE_DURATION = parseInt(
+  process.env.PREMIUM_EXPIRE_DURATION ?? '86400000',
+  10,
+);
 const DB_HOST = process.env.DB_HOST ?? 'localhost';
 const DB_PORT = parseInt(process.env.DB_PORT ?? '5432', 10);
 const DB_USER = process.env.DB_USER;
@@ -35,6 +39,7 @@ export {
   JWT_ACCESS_EXPIRES_IN,
   JWT_REFRESH_EXPIRES_IN,
   FE_URL,
+  PREMIUM_EXPIRE_DURATION,
   DB_HOST,
   DB_PORT,
   DB_USER,

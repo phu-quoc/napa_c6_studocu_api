@@ -37,6 +37,13 @@ export class DocumentsController {
 
   @ApiBearerAuth()
   @Auth()
+  @Post('like/:slug')
+  like(@User() user: UserPayload, @Param('slug') slug: string) {
+    return this.documentsService.like(user.id, slug);
+  }
+
+  @ApiBearerAuth()
+  @Auth()
   @Premium()
   @Get(':slug')
   findBySlug(@Param('slug') slug: string) {
